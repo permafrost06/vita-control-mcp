@@ -1,0 +1,45 @@
+name: Build and lint
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e '.[dev]'
+      - run: ruff check src
+      - run: ruff format --check src
+
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned VitaSDK and taiHEN development files
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -o /tmp/vitasdk.tar.bz2 \
+            https://github.com/vitasdk/autobuilds/releases/download/sdk-snapshot-20261015.850.1/vitasdk-x86_64-linux-gnu-2026-10-15_05-01-16.tar.bz2
+          echo '801f483928523fe63547faf58a7dfdaca7482b26c33af0064acea96a906f7662  /tmp/vitasdk.tar.bz2' | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/vita-sdk"
+          tar -xjf /tmp/vitasdk.tar.bz2 -C "$RUNNER_TEMP/vita-sdk"
+          curl -fL --retry 3 -o /tmp/taihen.tar.gz \
+            https://github.com/yifanlu/taiHEN/releases/download/v0.11/taihen.tar.gz
+          echo '6a7d4592b983292e8b8c53c624fa800e33ff69fe06c9d267cafc33d0ded4d2a9  /tmp/taihen.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/taihen.tar.gz -C "$RUNNER_TEMP/vita-sdk/vitasdk/arm-vita-eabi"
+          echo "VITASDK=$RUNNER_TEMP/vita-sdk/vitasdk" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/vita-sdk/vitasdk/bin" >> "$GITHUB_PATH"
+      - run: cmake -S . -B build && cmake --build build -j2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vita-control-plugin
+          path: build/vita_control.suprx

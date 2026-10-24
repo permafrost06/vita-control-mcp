@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vita-control-mcp"
+version = "0.1.0"
+description = "PS Vita screenshot and controller tools for MCP clients"
+requires-python = ">=3.11"
+dependencies = ["mcp>=1.12,<2"]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.11,<1"]
+
+[project.scripts]
+vita-control-mcp = "vita_control.server:main"
+vita-control = "vita_control.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vita_control"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
